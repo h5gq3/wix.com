@@ -49,14 +49,20 @@
               [@ ~]
                 :_  state
                 [200 `(crip (en-xml:html app:app-core))]
+              ::
+              [@ %editors ~]
+                :_  state
+                [200 `+>.state]
         ==
       %'POST'
         ?+  (stab url.request.inbound-request)  [[405 ~] state]
               [@ %html ~]
                 ?~  body.request.inbound-request  [[200 ~] state]
-                =/  html-cord  `cord`q.u.body.request.inbound-request
-                =/  as-manx  (de-xml:html html-cord)
-                :_  state(. (freeform-layer as-manx))
+                =/  shitload-of-json-and-xml  q.u.body.request.inbound-request
+                =/  asdasd
+                  ((at ~[so so]):dejs:format (need (de-json:html shitload-of-json-and-xml)))
+                =/  manx-head  (de-xml:html -.asdasd)
+                :_  state(. (freeform-layer [manx-head +.asdasd]))
                 [200 ~]
         ==
   ==
@@ -88,9 +94,9 @@
   ::
   ;html
     ;body
-      ;*  (-.state [+.state bowl])
+      ;*  (-.state [+<.state bowl])
       ;script: {channel}
-      ;script: window.onload = (event) => \{ window.channel = new Channel() }
+      ;script: window.addEventListener('load', (event) => \{ window.channel = new Channel() })
     ==
   ==
 --

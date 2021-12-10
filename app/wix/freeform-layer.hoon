@@ -1,5 +1,5 @@
 /+  wix
-|=  freeform-component-state=(unit manx)
+|=  freeform-component-state=[html=(unit manx) editors=@]
 ^-  [$-([(unit manx) bowl:gall] marl) _freeform-component-state]
 :_  freeform-component-state
 |=  [component-state=(unit manx) =bowl:gall]
@@ -64,6 +64,7 @@
 ++  event-handlers
   |^
   ;:  weld
+    on-load-window
     on-click-root-div
     on-key-down-body
     on-key-up-body
@@ -78,6 +79,22 @@
     on-page-visibility-change
   ==
   ::
+  ++  on-load-window
+    %-  trip
+    '''
+    function onLoadWindow(e) {
+      let req = new XMLHttpRequest();
+      req.open("GET", `${window.origin}/wix/editors`);
+      req.responseType = 'json';
+      req.send();
+      req.onreadystatechange = () => {
+        if (req.readyState === 4) {
+          console.log(req.response)
+          restoreEditors(req.response)
+        }
+      }
+    }
+    '''
   ++  on-click-root-div
     %-  trip
     '''
@@ -111,7 +128,7 @@
         carcass.classList.add('carcass')
         let editor = new EditorView({
         state: EditorState.create({
-        extensions: [basicSetup]
+        extensions: [basicSetup, EditorView.lineWrapping]
         }),
         parent: carcass
         });
@@ -214,6 +231,9 @@
       console.log(replacee)
       e.target.closest('.container').children[0].replaceWith(replacee);
       e.target.closest('.carcass').hidden = true;
+      if (replacee.children[0].getAttribute('oninit') !== null) {
+        Function(replacee.children[0].getAttribute('oninit'))();
+      }
       }
       }
       else {
@@ -267,9 +287,21 @@
     '''
     function onPageVisibilityChange(e) {
       if (document.visibilityState === 'hidden') {
-      let enXML = new XMLSerializer();
-      let enRootDiv = enXML.serializeToString(document.body.children.root);
-      navigator.sendBeacon('/wix/html', enRootDiv);
+        let serializedEditors = {};
+        let state = []
+        let enXML = new XMLSerializer();
+        /*const deCarcass = () => {
+          let clone = new DocumentFragment();
+          clone.appendChild(rootDiv);
+          let carcasses = clone.querySelectorAll('.container > .carcass')
+          let emptyCarcasses = carcasses.forEach(carcass => carcass.firstElementChild.remove())
+        };*/
+        let enRootDiv = enXML.serializeToString(document.body.children.root);
+        for (const prop in editors) {
+          serializedEditors[prop] = editors[prop].state.toJSON()
+        }
+        state.push(enRootDiv, JSON.stringify(serializedEditors));
+      navigator.sendBeacon('/wix/html', JSON.stringify(state));
       }
     }
     '''
@@ -277,10 +309,13 @@
 ++  event-listeners
   |^
   ;:  weld
+    window-load-listener
     root-div-click-listener
     body-key-press-listener
     page-visibility-change-listener
   ==
+  ++  window-load-listener
+    "window.addEventListener('load', onLoadWindow);"
   ++  root-div-click-listener
     "rootDiv.onclick = onClickRootDiv;"
   ++  body-key-press-listener
@@ -297,6 +332,7 @@
     one-to-zero
     carcass-to-facade
     once
+    restore-carcasses
   ==
   ++  one-to-zero
     %-  trip
@@ -314,7 +350,9 @@
       node.ondragstart = onDragStartFreeformElement,
       node.ondragend = onDragEndFreeformElement,
       node.onkeydown = onKeyDownFreeformElement,
-      node.onkeyup = onKeyUpFreeformElement
+      node.onkeyup = onKeyUpFreeformElement,
+      node.onmouseover = onHoverFreeformElement,
+      node.onmouseout = onHoverOutFreeformElement
       ))
     }
     '''
@@ -382,6 +420,19 @@
     fn(...args);
     fn = null;
     };
+    '''
+  ++  restore-carcasses
+    %-  trip
+    '''
+    function restoreEditors(json) {
+      let carcasses = rootDiv.querySelectorAll('.container > .carcass')
+      carcasses.forEach(carcass => { 
+        carcass.children[0].remove();
+        let editor = new EditorView({state: EditorState.fromJSON(json[carcass.parentElement.id]), parent: carcass})
+        editors[carcass.parentElement.id] = editor;
+        }
+      )
+    }
     '''
   --
 --
